@@ -7,8 +7,8 @@ import "Model.js" as Model
 Panel {
   id: root
 
-  moduleName: "stappmus.activity-monitor"
-  ipcTarget: "stappmus.activity-monitor"
+  moduleName: "sum117.activity-monitor"
+  ipcTarget: "sum117.activity-monitor"
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -107,6 +107,17 @@ Panel {
   readonly property bool showFrequencies: booleanSetting("showFrequencies", true)
   readonly property bool openExpandedByDefault: booleanSetting("openExpanded", false)
   readonly property bool powerEstimatesEnabled: booleanSetting("processPowerEnabled", true)
+
+  function revealControl(item) {
+    if (!item || !contentLoader.item) return
+    var point = item.mapToItem(contentLoader, 0, 0)
+    var next = pageScroll.contentY
+    if (point.y < next) next = point.y
+    else if (point.y + item.height > next + pageScroll.height)
+      next = point.y + item.height - pageScroll.height
+    pageScroll.contentY = Math.max(0, Math.min(next,
+      Math.max(0, pageScroll.contentHeight - pageScroll.height)))
+  }
 
   function refresh() {
     activity.refresh()
@@ -503,7 +514,7 @@ Panel {
   function shortcutHintText() {
     return "e collapse  ·  / search  ·  "
       + (powerEstimatesEnabled ? "c/m/w/p/t/n" : "c/m/p/t/n")
-      + " sort  ·  r refresh  ·  s settings  ·  j/k select  ·  click/x close"
+      + " sort  ·  r refresh  ·  s settings  ·  j/k select  ·  x terminate"
       + ((canCycleDisks || canCycleStorage) ? "  ·  d/v cycle drives" : "")
       + "  ·  ? hide"
   }
@@ -637,6 +648,7 @@ Panel {
       id: keyCatcher
       anchors.fill: parent
       blocked: !!(root.searchField && root.searchField.activeFocus) || root.settingsControlActive
+        || (!keyCatcher.activeFocus && !processActions.confirmationOpen)
 
       onMoveRequested: function(dx, dy) {
         if (processActions.confirmationOpen) {
@@ -673,7 +685,8 @@ Panel {
           processConfirm.selectedIndex = processConfirm.selectedIndex === 0 ? 1 : 0
           return
         }
-        root.switchPanel(direction)
+        var next = keyCatcher.nextItemInFocusChain(direction > 0)
+        if (next) next.forceActiveFocus(Qt.TabFocusReason)
       }
       onTextKey: function(text) {
         if (processActions.confirmationOpen) return
@@ -695,12 +708,27 @@ Panel {
         else if (key === "n" && root.expanded) root.setSort("name")
       }
 
-      Loader {
-        id: contentLoader
-        width: parent.width
-        sourceComponent: root.settingsOpen
-          ? settingsContent
-          : (root.expanded ? expandedContent : compactContent)
+      Flickable {
+        id: pageScroll
+        Keys.onEscapePressed: {
+          if (root.settingsOpen) root.setSettingsOpen(false)
+          else if (root.expanded) root.setExpanded(false)
+          else root.close()
+        }
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: contentLoader.item ? contentLoader.item.implicitHeight : 0
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        Loader {
+          id: contentLoader
+          width: pageScroll.width
+          sourceComponent: root.settingsOpen
+            ? settingsContent
+            : (root.expanded ? expandedContent : compactContent)
+          onLoaded: pageScroll.contentY = 0
+        }
       }
 
       ConfirmDialog {
@@ -709,9 +737,14 @@ Panel {
         opened: processActions.confirmationOpen
         z: 20
         message: processActions.pendingAction
-          ? "Do you want to close " + processActions.pendingAction.name + "?"
+          ? (processActions.pendingAction.action === "KILL" ? "Force terminate " : "Terminate ")
+            + processActions.pendingAction.name + " (PID " + processActions.pendingAction.pid + ")?\n"
+            + (processActions.pendingAction.action === "KILL"
+              ? "This stops the selected process immediately. Unsaved work may be lost."
+              : "Send SIGTERM to the selected process. It can handle or ignore the request.")
           : ""
-        confirmText: "Close"
+        confirmText: processActions.pendingAction && processActions.pendingAction.action === "KILL"
+          ? "Force" : "Terminate"
         background: Color.popups.background
         foreground: root.foreground
         selectedText: root.accent
@@ -918,6 +951,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onChanged: function(next) { root.persistSettings({ samplingSpeed: next }) }
             }
 
@@ -935,6 +969,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onChanged: function(next) { root.persistSettings({ historySamples: Number(next) }) }
             }
 
@@ -948,6 +983,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onChanged: function(next) { root.persistSettings({ temperatureUnit: next }) }
             }
 
@@ -961,6 +997,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onClicked: root.persistSettings({ openExpanded: !root.openExpandedByDefault })
             }
 
@@ -974,6 +1011,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onClicked: root.persistSettings({ showFrequencies: !root.showFrequencies })
             }
 
@@ -987,6 +1025,7 @@ Panel {
               foreground: root.foreground
               accent: root.accent
               fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+              onActiveFocusChanged: if (activeFocus) root.revealControl(this)
               onClicked: root.persistSettings({ processPowerEnabled: !root.powerEstimatesEnabled })
             }
           }
@@ -1012,7 +1051,7 @@ Panel {
         Button {
           width: (parent.width - parent.spacing) / 2
           text: "Done"
-          iconText: "\uf00c"
+          iconText: "󰄬"
           foreground: root.foreground
           accent: root.accent
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
@@ -1144,18 +1183,24 @@ Panel {
         TextField {
           id: searchBox
           width: Math.max(Style.space(120), Math.min(Style.space(180), parent.width * 0.24))
-          placeholderText: "\uf002 Search"
+          placeholderText: "Search processes…"
           foreground: root.foreground
           accent: root.accent
           font.pixelSize: Style.font.bodySmall
           verticalPadding: Style.spacing.sm
-          onTextChanged: {
-            root.processQuery = text
+          onTextChanged: searchDebounce.restart()
+          Timer {
+            id: searchDebounce
+            interval: 120
+            onTriggered: {
+            root.processQuery = searchBox.text
             root.selectedProcessIndex = 0
             root.selectedProcessKey = ""
             root.cursorActive = false
             pointerGate.reset()
+            }
           }
+          onActiveFocusChanged: if (activeFocus) root.revealControl(this)
           Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               root.finishSearch()
@@ -1227,6 +1272,32 @@ Panel {
         }
       }
 
+      Row {
+        width: parent.width
+        spacing: Style.spacing.md
+        Button {
+          width: (parent.width - parent.spacing) / 2
+          text: "Terminate"
+          iconText: "󰅙"
+          focusable: true
+          bordered: true
+          foreground: root.foreground
+          enabled: root.cursorActive && !!root.selectedProcess && !processActions.running
+          onActiveFocusChanged: if (activeFocus) root.revealControl(this)
+          onClicked: processActions.request(root.selectedProcess)
+        }
+        Button {
+          width: (parent.width - parent.spacing) / 2
+          text: "Force terminate"
+          focusable: true
+          bordered: true
+          foreground: root.urgent
+          enabled: root.cursorActive && !!root.selectedProcess && !processActions.running
+          onActiveFocusChanged: if (activeFocus) root.revealControl(this)
+          onClicked: processActions.request(root.selectedProcess, true)
+        }
+      }
+
       Text {
         id: expandedHint
         width: parent.width
@@ -1263,33 +1334,36 @@ Panel {
       anchors.verticalCenter: parent.verticalCenter
       spacing: Style.spacing.sm
 
-      PanelActionButton {
+      HeaderAction {
+        tooltipBounds: keyCatcher
         visible: !root.settingsOpen
-        iconText: "\uf128"
-        tooltipText: root.hintsVisible ? "Hide keyboard shortcuts" : "Keyboard shortcuts"
+        glyph: "󰋖"
+        helpText: root.hintsVisible ? "Hide keyboard shortcuts" : "Keyboard shortcuts"
         foreground: root.hintsVisible ? root.accent : root.foreground
-        hoverColor: root.accent
+        accent: root.accent
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
         bordered: true
         onClicked: root.hintsVisible = !root.hintsVisible
       }
 
-      PanelActionButton {
+      HeaderAction {
+        tooltipBounds: keyCatcher
         id: settingsButton
-        iconText: "\uf013"
-        tooltipText: root.settingsOpen ? "Close settings" : "Activity settings"
+        glyph: "󰒓"
+        helpText: root.settingsOpen ? "Close settings" : "Activity settings"
         foreground: root.settingsOpen ? root.accent : root.foreground
-        hoverColor: root.accent
+        accent: root.accent
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
         bordered: true
         onClicked: root.setSettingsOpen(!root.settingsOpen)
       }
 
-      PanelActionButton {
+      HeaderAction {
+        tooltipBounds: keyCatcher
         id: expandButton
         visible: !root.settingsOpen
-        iconText: expanded ? "\uf066" : "\uf065"
-        tooltipText: expanded ? "Collapse details" : "Expand details"
+        glyph: expanded ? "󰘕" : "󰘖"
+        helpText: expanded ? "Collapse details" : "Expand details"
         foreground: root.foreground
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
         bordered: true
@@ -1422,7 +1496,7 @@ Panel {
       anchors.rightMargin: Style.spacing.lg
       anchors.bottomMargin: Style.spacing.sm
       height: Style.space(4)
-      radius: height / 2
+      radius: Math.min(Style.cornerRadius, height / 2)
       color: Util.alpha(root.foreground, 0.12)
 
       Rectangle {
@@ -1444,7 +1518,8 @@ Panel {
         metricCard.activated((mouse.modifiers & Qt.ShiftModifier) ? -1 : 1)
       }
 
-      PanelToolTip {
+      BoundedToolTip {
+        boundsItem: keyCatcher
         visible: metricCard.interactive && metricCard.tooltipText !== "" && cardClick.containsMouse
         text: metricCard.tooltipText
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
@@ -1540,7 +1615,7 @@ Panel {
         y: Number(frame.y || 0)
         width: Number(frame.w || 0)
         height: Number(frame.h || 0)
-        radius: 2
+        radius: Math.min(Style.cornerRadius, 2)
         color: "transparent"
         border.width: 1
         border.color: Util.alpha(root.foreground, 0.28)
@@ -1569,7 +1644,7 @@ Panel {
 
     width: size
     height: size
-    radius: 1
+    radius: Math.min(Style.cornerRadius, 1)
     color: "transparent"
     border.width: 1
     border.color: Util.alpha(root.foreground, 0.22)
@@ -1587,7 +1662,8 @@ Panel {
       anchors.fill: parent
       hoverEnabled: true
 
-      PanelToolTip {
+      BoundedToolTip {
+        boundsItem: keyCatcher
         visible: cellHover.containsMouse && cellHover.parent.tooltipText !== ""
         text: cellHover.parent.tooltipText
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
@@ -1680,7 +1756,8 @@ Panel {
       cursorShape: Qt.PointingHandCursor
       onClicked: root.setSort(sortCell.sortKey)
 
-      PanelToolTip {
+      BoundedToolTip {
+        boundsItem: keyCatcher
         visible: sortCell.tooltipText !== "" && sortHover.containsMouse
         text: sortCell.tooltipText
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
@@ -1782,11 +1859,24 @@ Panel {
       anchors.fill: parent
       hoverEnabled: !compact
       cursorShape: Qt.PointingHandCursor
-      acceptedButtons: Qt.LeftButton
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
       onPositionChanged: function(mouse) {
         if (!compact) root.selectProcessFromPointer(parent.rowIndex, parent, mouse)
       }
-      onClicked: root.requestCloseProcess(parent.processData, compact ? -1 : parent.rowIndex)
+      onClicked: function(mouse) {
+        var selected = parent.processData
+        if (mouse.button === Qt.RightButton) {
+          root.requestCloseProcess(selected, compact ? -1 : parent.rowIndex)
+        } else if (compact) {
+          root.setExpanded(true)
+          root.selectedProcessKey = Model.processIdentityKey(selected)
+          root.restoreProcessCursor()
+          root.cursorActive = true
+        } else {
+          root.selectProcess(parent.rowIndex)
+          root.cursorActive = true
+        }
+      }
     }
   }
 

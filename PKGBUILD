@@ -1,11 +1,12 @@
-# Maintainer: Kristoffer Haugland <stappmus at gmail dot com>
+# Maintainer: sum117
+# Original packaging: Kristoffer Haugland
 
 pkgname=omarchy-activity-monitor-power-helper
 pkgver=2.1.1
 pkgrel=1
 pkgdesc="Optional root-only native RAPL reader for the Omarchy Activity Monitor plugin"
 arch=('x86_64')
-url="https://github.com/stappmus/omarchy-activity-monitor"
+url="https://github.com/sum117/omarchy-activity-monitor"
 license=('MIT')
 depends=('gcc-libs' 'glibc' 'sudo')
 makedepends=('gcc' 'make')
@@ -18,11 +19,11 @@ source=(
   'LICENSE'
 )
 sha256sums=(
-  'bc8463aaac0e75dcea5c36597d5031ab28630d078a438ca87a9044a422ee026c'
+  '37645efc700fa02a6aa6b20ca3435701ca40354384342bf59387fb4ef93cc842'
   '2ea69385047c3a1d1893378e2866a464cba7ae28040c0add8a3eaa80f94700a3'
   'e248f015e89bc7f3df4714e7d1e0248c4ac9cc4b4642dda6aa428741b6c4f2ca'
-  'e02f364d97fd1c7ef95bb94d607c857ae5052961cdd0c8ac9b24ba2626ca1480'
-  'dd56ead2d3379b1d8298bbd1b905188b21894c46312ea4186b2afde9b03b3184'
+  '645a0f6bdff1033df4a98098bedfe12232d2b2f4dabc7983d72d41937ce2418a'
+  'a166e168420df0ad798aa50509dd9e672b7c6bc2e32b71a2dda784fc5428bda6'
 )
 
 build() {

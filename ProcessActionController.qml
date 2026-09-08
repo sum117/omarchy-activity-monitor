@@ -38,7 +38,7 @@ Item {
     return Model.processActionBlockReason(process, currentUser)
   }
 
-  function request(process) {
+  function request(process, force) {
     if (!active || !enabled || running) return false
 
     var reason = blockReason(process)
@@ -59,7 +59,7 @@ Item {
       startTicks: Number(process.startTicks),
       name: String(process.name || "process"),
       user: String(process.user || ""),
-      action: "APP_TERM"
+      action: force === true ? "KILL" : "TERM"
     }
     confirmationRequested()
     focusRequested()
@@ -72,7 +72,7 @@ Item {
   }
 
   function confirm() {
-    if (!_pendingAction || running) {
+    if (!active || !enabled || !_pendingAction || running) {
       cancel()
       return
     }
@@ -102,7 +102,7 @@ Item {
         if (!action) _status = "App ended"
         else if (disposition === "graceful") _status = "Closed " + action.name
         else if (disposition === "escalated") _status = "Force-closed " + action.name
-        else _status = "Ended " + action.name
+        else _status = (action.action === "KILL" ? "Force termination sent to " : "Termination requested for ") + action.name
       } else {
         _failed = true
         _status = error || "Could not end the selected app"
