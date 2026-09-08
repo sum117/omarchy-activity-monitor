@@ -13,7 +13,7 @@ Button {
   implicitWidth: Style.space(28)
   implicitHeight: Style.space(28)
   focusable: true
-  bordered: true
+  bordered: false
   onHovered: function(value) { hoveredNow = value }
 
   TextMetrics {

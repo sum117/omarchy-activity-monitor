@@ -1342,7 +1342,6 @@ Panel {
         foreground: root.hintsVisible ? root.accent : root.foreground
         accent: root.accent
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
-        bordered: true
         onClicked: root.hintsVisible = !root.hintsVisible
       }
 
@@ -1354,7 +1353,6 @@ Panel {
         foreground: root.settingsOpen ? root.accent : root.foreground
         accent: root.accent
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
-        bordered: true
         onClicked: root.setSettingsOpen(!root.settingsOpen)
       }
 
@@ -1366,7 +1364,6 @@ Panel {
         helpText: expanded ? "Collapse details" : "Expand details"
         foreground: root.foreground
         fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
-        bordered: true
         onClicked: root.setExpanded(!expanded)
       }
     }
